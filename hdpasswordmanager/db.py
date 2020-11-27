@@ -3,6 +3,8 @@ import pathlib
 import json
 import os
 
+from hdpasswordmanager.wallet import * 
+
 class WalletDB(object): #not really a db but we will just call it that : ) 
 
     def __init__(self):
@@ -28,17 +30,23 @@ class WalletDB(object): #not really a db but we will just call it that : )
     def wallet_file_exists(self, wallet_name):
         return os.path.isfile(self.get_wallet_path(wallet_name))
 
+
     def get_wallet_path(self, wallet_name):
         return self.db_path + wallet_name + self.wallet_ext 
 
 #TODO add some error checking
     def load_wallet(self, wallet_name):
+        if not self.wallet_file_exists:
+            raise Exception("Wallet file doesnt exist!")
         with open(self.get_wallet_path(wallet_name)) as db:
             wallet = json.load(db)
         return wallet
 
-    def update_wallet(self, wallet_name, data):
-        with open(self.get_wallet_path(wallet_name)) as db:
+    def update_wallet(self, wallet : PasswordWallet):
+        wallet_name = wallet.name
+        data = wallet.to_json()
+        print(data)
+        with open(self.get_wallet_path(wallet_name), 'w') as db:
             json.dump(data,db)
 
 

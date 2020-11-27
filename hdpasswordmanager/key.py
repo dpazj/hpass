@@ -1,7 +1,7 @@
 from hdpasswordmanager.mnemonic import Mnemonic
 from hdpasswordmanager.utils import * 
 
-from hashlib import sha256, sha512
+from hashlib import sha256, sha512, pbkdf2_hmac
 
 
 import hashlib
@@ -9,6 +9,8 @@ import hmac
 import base58
 import ecdsa
 
+
+PASSWORD_PBKDF2_ITERATIONS = 100000
 
 #http://www.secg.org/sec2-v2.pdf
 secp256k1_p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
@@ -23,10 +25,9 @@ secp256k1_gen = ecdsa.ellipticcurve.Point(secp256k1_curve, secp256k1_Gx, secp256
 
 class HDKey(object):
 
-    def __init__(self, key : bytes, chain : bytes, is_public_key_only : bool = False, testnet: bool = False, depth : int = 0, parent_fingerprint : bytes = b'\x00\x00\x00\x00', child_number : bytes = b'\x00\x00\x00\x00'):
+    def __init__(self, key : bytes, chain : bytes, is_public_key_only : bool = False, depth : int = 0, parent_fingerprint : bytes = b'\x00\x00\x00\x00', child_number : bytes = b'\x00\x00\x00\x00'):
         
         self.chain = chain
-        self.testnet = testnet
         self.depth = depth
         self.child_number = child_number
         self.parent_fingerprint = parent_fingerprint
@@ -70,8 +71,8 @@ class HDKey(object):
         self.pubkey_uncompressed = b'\x04' + int_to_bytes(self.x, 32) + int_to_bytes(self.y, 32)
         
         
-        self.ripemd160 = hashlib.new('RIPEMD160', sha256(self.pubkey_compressed).digest()).digest()
-        self.fingerprint = self.ripemd160[0:4]
+        self.key_identifier = hashlib.new('RIPEMD160', sha256(self.pubkey_compressed).digest()).digest()
+        self.fingerprint = self.key_identifier[0:4]
 
     @staticmethod
     def from_seed(seed : bytes):
@@ -86,15 +87,25 @@ class HDKey(object):
             raise Exception("Invalid Master Key Generation")
         
         return HDKey(key=master_secret_key, chain=master_chain_code)
-    
+
+    def get_key_password(self):
+        if self.is_public_key_only:
+            raise Exception("Key is public key only so cannot derive password")
+        return bytes_to_base85(pbkdf2_hmac("sha512", self.privkey, self.chain, PASSWORD_PBKDF2_ITERATIONS)[:32])
+
+    def get_child_number(self):
+        return bytes_to_int(self.child_number)
+
+    def get_key_identifier(self):
+        return bytes_to_base58(self.key_identifier)
 
     def get_priv_wif(self):
         if self.is_public_key_only:
             raise Exception("Key is public_key_only!")
-        return self.serialize(True, self.privkey, self.chain, self.depth, self.parent_fingerprint, self.child_number, self.testnet)
+        return bytes_to_base58(self.serialize(False, self.privkey, self.chain, self.depth, self.parent_fingerprint, self.child_number))
 
     def get_pub_wif(self):
-        return self.serialize(False ,self.pubkey_compressed, self.chain, self.depth, self.parent_fingerprint, self.child_number, self.testnet)
+        return bytes_to_base58(self.serialize(True ,self.pubkey_compressed, self.chain, self.depth, self.parent_fingerprint, self.child_number))
 
     def derive_child_pubkey(self, index : int):
         if index >= 0x80000000:
@@ -119,7 +130,7 @@ class HDKey(object):
 
         child_chain = I[32:64]
         child_key = prefix + int_to_bytes(child_x, 32)
-        return HDKey(child_key, child_chain, is_public_key_only=True, testnet=self.testnet, depth = self.depth + 1, parent_fingerprint=self.fingerprint, child_number=child_number)
+        return HDKey(child_key, child_chain, is_public_key_only=True, depth = self.depth + 1, parent_fingerprint=self.fingerprint, child_number=child_number)
 
     def derive_child_privkey(self, index : int, hardened : bool = False):
 
@@ -146,27 +157,23 @@ class HDKey(object):
         child_secret_key = int_to_bytes(child_secret_key_int, 32)
         child_chain_code = I[32:64] 
 
-        if  child_secret_key_int >= secp256k1_n or child_secret_key_int == 0:
+        if child_secret_key_int >= secp256k1_n or child_secret_key_int == 0:
             raise Exception("Key greater than secp256k1_n, try another index")
 
-        return HDKey(child_secret_key, child_chain_code, testnet=self.testnet, parent_fingerprint=self.fingerprint, child_number=child_number_bytes, depth=self.depth+1)
+        return HDKey(child_secret_key, child_chain_code, parent_fingerprint=self.fingerprint, child_number=child_number_bytes, depth=self.depth+1)
 
     @staticmethod
-    def serialize(is_private_key : bool,key : bytes, chain : bytes, depth : int, parent_fingerprint : bytes, child_number : bytes, testnet: bool = False):
+    def serialize(is_public_key : bool, key : bytes, chain : bytes, depth : int, parent_fingerprint : bytes, child_number : bytes):
 
-        if is_private_key:
+        if not is_public_key:
             serialization_format = b'\x04\x88\xad\xe4'
-            if testnet: 
-                serialization_format = b'\x04\x35\x83\x94'
         else: 
             serialization_format = b'\x04\x88\xb2\x1e' 
-            if testnet: 
-                serialization_format = b'\x04\x35\x87\xcf'
 
         serialization_format += int_to_bytes(depth,1) + parent_fingerprint + child_number
         serialization_format += chain
 
-        if is_private_key:
+        if not is_public_key:
             serialization_format += b'\x00' + key
         else:
             serialization_format += key
@@ -176,7 +183,45 @@ class HDKey(object):
               
         serialization_format += checksum[0:4]
         
-        return bytes_to_base58(serialization_format)
+        return serialization_format
+ 
+    @staticmethod
+    def deserialize(data : bytes):
+        magic = data[0:4]
+
+        if magic == b'\x04\x88\xad\xe4':
+            is_pub_key = False
+        elif magic == b'\x04\x88\xb2\x1e':
+            is_pub_key = True
+        else:
+            raise Exception("Unsupported key format!")
+
+        depth = bytes_to_int(data[4:5])
+        parent_fingerprint = data[5:9]
+        child_number = data[9:13]
+        chain = data[13:45]
+
+        i = 78
+        if not is_pub_key:
+            key = data[46:78]
+
+        else:
+            key = data[45:77]
+            i = 77
+        
+        checksum = data[i:i+4]
+        testchecksum = sha256(sha256(data[0:-4]).digest()).digest()[0:4]
+
+        if testchecksum != checksum:
+            raise Exception("Invalid key checksum!")
+ 
+        return HDKey(key=key, chain=chain, is_public_key_only=is_pub_key, depth=depth, parent_fingerprint=parent_fingerprint, child_number=child_number)
+
+        
+
+    @staticmethod
+    def from_wif(wif : str):
+        return HDKey.deserialize(base58_to_bytes(wif))       
 
 
 

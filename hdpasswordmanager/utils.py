@@ -1,5 +1,6 @@
 import struct 
 import base58
+import base64
 
 def bytes_to_int(x : bytes, byteorder : str = "big", signed=False):
     return int.from_bytes(x, byteorder,signed=signed)
@@ -23,7 +24,11 @@ def base58_to_bytes(x : str):
     return base58.b58decode(x)
 
 def bytes_to_base58(x : bytes):
-    return base58.b58encode(x)
+    return base58.b58encode(x).decode("utf-8")
+
+
+def bytes_to_base85(x : bytes):
+    return base64.a85encode(x)
 
 
 
