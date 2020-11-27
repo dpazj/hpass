@@ -32,8 +32,7 @@ class HDKey(object):
         self.child_number = child_number
         self.parent_fingerprint = parent_fingerprint
         self.is_public_key_only = is_public_key_only
-
-
+        
         #get pubkey info
         if is_public_key_only:
             self.privkey = None
@@ -49,7 +48,7 @@ class HDKey(object):
                 #calculate y from x
                 y = pow(self.x, 3, secp256k1_p) + 7 % secp256k1_p
                 #square root of 'y' using the secp256k1 curve
-                # k = secp256k1_p - 3 // 4
+                #k = secp256k1_p - 3 // 4
                 k = 28948022309329048855892746252171976963317496166410141009864396001977208667915
                 self.y = pow(y, k + 1, secp256k1_p)
 
@@ -69,7 +68,6 @@ class HDKey(object):
 
         self.pubkey_compressed = prefix + int_to_bytes(self.x,32)
         self.pubkey_uncompressed = b'\x04' + int_to_bytes(self.x, 32) + int_to_bytes(self.y, 32)
-        
         
         self.key_identifier = hashlib.new('RIPEMD160', sha256(self.pubkey_compressed).digest()).digest()
         self.fingerprint = self.key_identifier[0:4]
@@ -145,7 +143,6 @@ class HDKey(object):
 
         child_number_bytes = int_to_bytes(child_number, 4)
 
-
         if child_number >= 0x80000000:
             #hardened child
             I = hmac.new(self.chain, b'\x00' + self.privkey + child_number_bytes, sha512).digest()
@@ -216,8 +213,6 @@ class HDKey(object):
             raise Exception("Invalid key checksum!")
  
         return HDKey(key=key, chain=chain, is_public_key_only=is_pub_key, depth=depth, parent_fingerprint=parent_fingerprint, child_number=child_number)
-
-        
 
     @staticmethod
     def from_wif(wif : str):

@@ -20,7 +20,6 @@ class PasswordWallet(object):
         if self.keys is None:
             self.keys = self.__populate_keys()
 
-
     def __populate_keys(self):
         keys = {}
         for account in self.accounts:
@@ -38,8 +37,7 @@ class PasswordWallet(object):
         try:
             account_key = self.master_key.derive_child_privkey(self.account_index)
         except:
-            print("Invalid account key generated please try again!")
-            return
+            return self.add_account(account_name)
 
         key_identifier = account_key.get_key_identifier()
         self.keys[key_identifier] = account_key
@@ -50,7 +48,53 @@ class PasswordWallet(object):
             "key_index" : 0,
             "services"  : {}        
         }  
-        return 
+        return account_key, key_identifier
+
+    def create_password(self, account_name, service):
+        if account_name not in self.accounts:
+            self.add_account(account_name)
+          
+        
+        ki = self.accounts[account_name]["key_identifier"]
+        account_key = self.keys[ki]
+
+        self.accounts[account_name]["key_index"] += 1
+        try:
+            new_pass_key = account_key.derive_child_privkey(self.accounts[account_name]["key_index"])
+        except:
+            return self.create_password(account_name, service) #we recursively call create password until a valid key is found
+        new_key_identifier = new_pass_key.get_key_identifier()
+
+        self.accounts[account_name]["services"][service] = new_key_identifier
+        self.keys[new_key_identifier] = new_pass_key
+        return new_pass_key, new_key_identifier 
+
+    def get_password(self, account_name, service):
+        ki = self.get_key_identifier(account_name, service)
+        if ki is None:
+            return
+        return self.keys[ki].get_key_password()
+
+    def get_key_identifier(self, account_name, service):
+        if account_name not in self.accounts:
+            return
+        if service not in self.accounts[account_name]["services"]:
+            return
+        ki = self.accounts[account_name]["services"][service]
+        return ki
+
+    def update_password(self, account_name, service):
+        ki = self.get_key_identifier(account_name, service)
+        if ki is None:
+            return
+        del self.keys[ki]
+        return self.create_password(account_name, service)
+
+    def delete_password(self, account_name, service):
+        ki = self.get_key_identifier(account_name, service)
+        if ki is None: 
+            return
+        del self.keys[ki]
 
     def to_json(self, export = False):
 
@@ -83,11 +127,6 @@ class PasswordWallet(object):
         for key in secrets["keys"]:
             keys[key] = HDKey.from_wif(secrets["keys"][key])
              
-
-        #if has_passphrase:
-            #decrypt keys
-        #    keys = keys
-
         return PasswordWallet(wallet_name=name, master_key=master_key, accounts=accounts, keys=keys, account_index=account_index) 
     
     @staticmethod
@@ -106,11 +145,3 @@ class PasswordWallet(object):
     def from_export_file_(mneumonic, export_json):
         return
         
-
-
-
-
-
-
-
-

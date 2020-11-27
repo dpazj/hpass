@@ -26,7 +26,6 @@ def base58_to_bytes(x : str):
 def bytes_to_base58(x : bytes):
     return base58.b58encode(x).decode("utf-8")
 
-
 def bytes_to_base85(x : bytes):
     return base64.a85encode(x)
 

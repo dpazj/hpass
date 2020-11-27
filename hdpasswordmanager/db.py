@@ -45,7 +45,6 @@ class WalletDB(object): #not really a db but we will just call it that : )
     def update_wallet(self, wallet : PasswordWallet):
         wallet_name = wallet.name
         data = wallet.to_json()
-        print(data)
         with open(self.get_wallet_path(wallet_name), 'w') as db:
             json.dump(data,db)
 
