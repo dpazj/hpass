@@ -25,7 +25,6 @@ class WalletDB(object): #not really a db but we will just call it that : )
             if file.endswith("*" + self.wallet_ext):
                 wallet_names.append(file.split('.')[0]) 
         return wallet_names
-                   
     
     def wallet_file_exists(self, wallet_name):
         return os.path.isfile(self.get_wallet_path(wallet_name))
@@ -45,8 +44,10 @@ class WalletDB(object): #not really a db but we will just call it that : )
     def update_wallet(self, wallet : PasswordWallet):
         wallet_name = wallet.name
         data = wallet.to_json()
-        with open(self.get_wallet_path(wallet_name), 'w') as db:
-            json.dump(data,db)
+        self.write_json_file(self.get_wallet_path(wallet_name), data)
 
-
+    @staticmethod
+    def write_json_file(path, data):
+        with open(path, 'w') as db:
+            json.dump(data, db)
     

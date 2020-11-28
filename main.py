@@ -16,18 +16,15 @@ password_wallet.add_account("jpaz@secretmail.com")
 
 
 key, _ = password_wallet.create_password("jpaz@gmail.com","google.com")
-print(password_wallet.to_json())
-
-print("\n\n")
-
 newkey, _ = password_wallet.update_password("jpaz@gmail.com", "google.com")
-print(password_wallet.to_json())
+key, _ = password_wallet.create_password("jpaz@gmail.com", "youtube.com")
 
-password_wallet.delete_password("jpaz@gmail.com", "google.com")
-print(password_wallet.to_json())
+export_file = password_wallet.to_json(True)
 
 
-db.update_wallet(password_wallet)
-print("Saved wallet '{}' to path {}".format(password_wallet.name, db.get_wallet_path(password_wallet.name)))
+import_wallet = PasswordWallet.from_export_file(export_file, mnemonic)
 
-test = PasswordWallet.from_json(db.load_wallet("default"))
+print(import_wallet.to_json() == password_wallet.to_json())
+
+
+
