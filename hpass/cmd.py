@@ -23,7 +23,6 @@ def get_input(message, default=None, is_int = False, valid_list = None, valid_li
         if default is not None and len(inpt) == 0:
             inpt = default 
 
-
         if invalid_list is not None and inpt in invalid_list and valid:
             valid = False
             print(invalid_list_msg)    

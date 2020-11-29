@@ -149,9 +149,10 @@ class PasswordWallet(object):
         return PasswordWallet(wallet_name=name, master_key=master_key, accounts=accounts, keys=keys, account_index=account_index) 
     
     @staticmethod
-    def create_new_wallet(strength : int = 128, passphrase : str = "", wallet_name : str = "default"):
+    def create_new_wallet(strength : int, passphrase : str, wallet_name : str):
         #create new key
         mnemonic_gen = Mnemonic("english")
+        
         mnemonic = mnemonic_gen.generate(strength)
         seed = mnemonic_gen.to_seed(mnemonic=mnemonic, passphrase=passphrase)
         master_key = HDKey.from_seed(seed)

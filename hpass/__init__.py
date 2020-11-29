@@ -8,4 +8,4 @@ from .cmd import *
 from .args import *
 
 
-hpass.args.initialize()
+args.initialize()
