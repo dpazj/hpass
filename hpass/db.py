@@ -3,25 +3,25 @@ import pathlib
 import json
 import os
 
-from hdpasswordmanager.wallet import * 
+from wallet import * 
 
 class WalletDB(object): #not really a db but we will just call it that : ) 
 
     def __init__(self):
         home_path = str(pathlib.Path.home())
-        self.db_path = home_path + "/.hdpasswordmanager/" 
+        self.db_path = home_path + "/.hpass/" 
         self.wallet_ext = ".wallet"
 
         if not os.path.exists(self.db_path):
             os.makedirs(self.db_path)
-            print("Created wallet directory: '{}'".format(self.db_path))
 
-        self.wallet_names = self.get_wallets()
+        self.wallet_names = self.get_wallet_names()
 
     def get_wallet_names(self):
         wallet_names = []
         for file in os.listdir(self.db_path):
-            if file.endswith("*" + self.wallet_ext):
+            #print(file)
+            if file.endswith(self.wallet_ext):
                 wallet_names.append(file.split('.')[0]) 
         return wallet_names
     
@@ -32,9 +32,14 @@ class WalletDB(object): #not really a db but we will just call it that : )
     def get_wallet_path(self, wallet_name):
         return self.db_path + wallet_name + self.wallet_ext 
 
-#TODO add some error checking
+
+    def delete_wallet(self, wallet_name):
+        if not self.wallet_file_exists(wallet_name):
+            raise Exception("Wallet file doesn't exist!")
+        os.remove(self.get_wallet_path(wallet_name))
+
     def load_wallet(self, wallet_name):
-        if not self.wallet_file_exists:
+        if not self.wallet_file_exists(wallet_name):
             raise Exception("Wallet file doesnt exist!")
         with open(self.get_wallet_path(wallet_name)) as db:
             wallet = json.load(db)

@@ -1,10 +1,11 @@
-import hdpasswordmanager.mnemonic
-import hdpasswordmanager.key 
-import hdpasswordmanager.utils
-import hdpasswordmanager.wallet
-import hdpasswordmanager.db
-import hdpasswordmanager.cmd
-import hdpasswordmanager.args
+
+from .mnemonic import * 
+from .key import *  
+from .utils import * 
+from .wallet import *
+from .db import * 
+from .cmd import * 
+from .args import *
 
 
-hdpasswordmanager.args.initialize()
+hpass.args.initialize()

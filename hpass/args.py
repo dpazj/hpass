@@ -1,4 +1,4 @@
-from hdpasswordmanager import cmd
+import cmd
 
 import argparse
 
@@ -19,3 +19,8 @@ def parse():
         cmd.create()
     elif args.action == "ls":
         cmd.ls()
+    elif args.action == "delete":
+        cmd.delete()
+
+initialize()
+parse()

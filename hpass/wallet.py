@@ -1,6 +1,6 @@
 
-from hdpasswordmanager.utils import *
-from hdpasswordmanager.key import *
+from utils import *
+from key import *
 
 
 class PasswordWallet(object):

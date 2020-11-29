@@ -1,5 +1,5 @@
-from hdpasswordmanager.mnemonic import Mnemonic
-from hdpasswordmanager.utils import * 
+from mnemonic import Mnemonic
+from utils import * 
 
 from hashlib import sha256, sha512, pbkdf2_hmac
 
