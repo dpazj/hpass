@@ -62,11 +62,25 @@ class PasswordWallet(object):
         }  
         return account_key, key_identifier
 
-    def create_password(self, account_name, service):
+    def add_service(self, account_name, service):
+
+        try:
+            self.__create_password(account_name, service)
+        except:
+            return False 
+
+        return True
+
+    def __create_password(self, account_name, service, ignore_service_check = False):
         if account_name not in self.accounts:
             self.add_account(account_name)
+        
+        account = self.accounts[account_name]
+        if service in account["services"] and ignore_service_check is False:
+            #password already exists for this account
+            raise Exception("Account already exsist for this service") 
           
-        ki = self.accounts[account_name]["key_identifier"]
+        ki = account["key_identifier"]
         account_key = self.keys[ki]
 
         self.accounts[account_name]["key_index"] += 1
@@ -75,7 +89,7 @@ class PasswordWallet(object):
         try:
             new_pass_key = account_key.derive_child_privkey(key_index)
         except:
-            return self.create_password(account_name, service) #we recursively call create password until a valid key is found
+            return self.__create_password(account_name, service) #we recursively call create password until a valid key is found
         new_key_identifier = new_pass_key.get_key_identifier()
 
         self.accounts[account_name]["services"][service] = {"key_identifier" : new_key_identifier, "key_index" : key_index} 
@@ -93,7 +107,7 @@ class PasswordWallet(object):
             return
         services = self.accounts[account_name]["services"]
         
-        if service not in services: 
+        if service not in services:
             return
         ki = services[service]["key_identifier"] 
         return ki
@@ -101,9 +115,10 @@ class PasswordWallet(object):
     def update_password(self, account_name, service):
         ki = self.get_key_identifier(account_name, service)
         if ki is None:
-            return
+            return False
+        key, new_ki = self.__create_password(account_name, service, True)
         del self.keys[ki]
-        return self.create_password(account_name, service)
+        return True 
 
     def delete_password(self, account_name, service):
         ki = self.get_key_identifier(account_name, service)
